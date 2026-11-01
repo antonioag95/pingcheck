@@ -1,0 +1,34 @@
+[Unit]
+Description=pingcheck - ICMP probe pushing status to Uptime Kuma
+Documentation=file:/usr/local/share/doc/pingcheck/README.md
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+
+# Configuration comes only from the environment: no config file is read.
+# PUSH_TOKEN is a secret, so install this unit with mode 600 and keep it
+# out of the repository.
+Environment=PUSH_URL=https://status.misterde.net/api/push
+Environment=PUSH_TOKEN=replace-me
+Environment=TARGET=status.misterde.net
+Environment=INTERVAL=60
+Environment=LOG=info
+
+ExecStart=/usr/local/bin/pingcheck
+
+Restart=always
+RestartSec=5
+TimeoutStopSec=5
+
+# The unprivileged ICMP socket is used, so no capabilities are needed.
+DynamicUser=yes
+NoNewPrivileges=yes
+ProtectSystem=strict
+ProtectHome=yes
+PrivateTmp=yes
+RestrictAddressFamilies=AF_INET AF_INET6 AF_UNIX
+
+[Install]
+WantedBy=multi-user.target

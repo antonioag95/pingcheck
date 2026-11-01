@@ -1,0 +1,37 @@
+[Unit]
+Description=pingcheck - ICMP probe pushing status to Uptime Kuma (low-write)
+Documentation=file:/usr/local/share/doc/pingcheck/README.md
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+
+# Variant for SD-card booted hosts (Raspberry Pi): only warnings and
+# errors reach the journal, so the per-tick line never touches the card.
+Environment=PUSH_URL=https://status.misterde.net/api/push
+Environment=PUSH_TOKEN=replace-me
+Environment=TARGET=status.misterde.net
+Environment=INTERVAL=60
+Environment=LOG=warn
+
+ExecStart=/usr/local/bin/pingcheck
+
+# env_logger writes to stderr, so this pair is what actually filters.
+StandardOutput=null
+StandardError=journal
+LogLevelMax=warning
+
+Restart=always
+RestartSec=5
+TimeoutStopSec=5
+
+DynamicUser=yes
+NoNewPrivileges=yes
+ProtectSystem=strict
+ProtectHome=yes
+PrivateTmp=yes
+RestrictAddressFamilies=AF_INET AF_INET6 AF_UNIX
+
+[Install]
+WantedBy=multi-user.target

@@ -1,0 +1,3 @@
+/target
+# The real unit contains PUSH_TOKEN and must stay out of the repository.
+/deploy/pingcheck.service
