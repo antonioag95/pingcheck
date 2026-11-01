@@ -31,7 +31,7 @@ Environment only, no configuration file is read.
 | --- | --- | --- | --- |
 | `PUSH_URL` | yes | - | base URL, e.g. `https://status.example.net/api/push` |
 | `PUSH_TOKEN` | yes | - | monitor token, appended to the path |
-| `TARGET` | yes | - | hostname or IP address to ping |
+| `TARGET` | yes | - | hostname or IP to ping, no scheme and no path |
 | `INTERVAL` | no | `60` | seconds, accepted range `10..=120` |
 | `DRY_RUN` | no | `0` | `1` logs the payload instead of sending it |
 | `LOG` | no | `info` | `off`, `error`, `warn`, `info`, `debug` |

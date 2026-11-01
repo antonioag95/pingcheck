@@ -59,10 +59,8 @@ impl Settings {
             return Err("PUSH_TOKEN is empty".into());
         }
 
-        let target = required("TARGET")?;
-        if target.trim().is_empty() {
-            return Err("TARGET is empty".into());
-        }
+        let target = required("TARGET")?.trim().to_string();
+        validate_target(&target)?;
 
         let interval_s = match env::var("INTERVAL") {
             Ok(v) => v
@@ -94,6 +92,47 @@ impl Settings {
 
 fn required(name: &str) -> Result<String, String> {
     env::var(name).map_err(|_| format!("{name} is not set"))
+}
+
+/// Rejects the most common configuration mistake: passing a URL instead of a
+/// host. The scheme would be handed to the resolver and fail on every
+/// iteration, which is indistinguishable from a real outage.
+fn validate_target(target: &str) -> Result<(), String> {
+    if target.is_empty() {
+        return Err("TARGET is empty".into());
+    }
+
+    if let Some((_, rest)) = target.split_once("://") {
+        let host = rest.split('/').next().unwrap_or(rest);
+        return Err(format!(
+            "TARGET must be a hostname or IP, not a URL: {target:?}; use {host:?}"
+        ));
+    }
+
+    if target.contains('/') {
+        return Err(format!(
+            "TARGET must be a hostname or IP, not a path: {target:?}"
+        ));
+    }
+
+    if target.chars().any(char::is_whitespace) {
+        return Err(format!("TARGET must not contain whitespace: {target:?}"));
+    }
+
+    if IpAddr::from_str(target).is_ok() {
+        return Ok(());
+    }
+
+    if !target
+        .chars()
+        .all(|c| c.is_ascii_alphanumeric() || c == '.' || c == '-' || c == '_')
+    {
+        return Err(format!(
+            "TARGET is not a valid hostname or IP address: {target:?}"
+        ));
+    }
+
+    Ok(())
 }
 
 /// Pure state machine, kept separate so it can be unit tested.
@@ -391,5 +430,30 @@ mod tests {
         assert_eq!(rtt_ms(Some(Duration::from_millis(12))), "12.0");
         assert_eq!(rtt_ms(Some(Duration::from_micros(12_340))), "12.3");
         assert_eq!(rtt_ms(None), "0");
+    }
+
+    #[test]
+    fn target_accepts_hosts_and_addresses() {
+        assert!(validate_target("status.misterde.net").is_ok());
+        assert!(validate_target("localhost").is_ok());
+        assert!(validate_target("192.0.2.1").is_ok());
+        assert!(validate_target("2001:db8::1").is_ok());
+    }
+
+    #[test]
+    fn target_rejects_urls_and_paths() {
+        assert!(validate_target("").is_err());
+        assert!(validate_target("https://status.misterde.net").is_err());
+        assert!(validate_target("http://status.misterde.net/ping").is_err());
+        assert!(validate_target("status.misterde.net/api").is_err());
+        assert!(validate_target("two words").is_err());
+        assert!(validate_target("host?query=1").is_err());
+    }
+
+    #[test]
+    fn target_url_error_suggests_the_bare_host() {
+        let err = validate_target("https://status.misterde.net").unwrap_err();
+        assert!(err.contains("status.misterde.net"));
+        assert!(err.contains("not a URL"));
     }
 }
