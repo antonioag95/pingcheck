@@ -150,7 +150,13 @@ fn masked_url(base: &str, token: &str) -> String {
     } else {
         "…".to_string()
     };
-    format!("{base}/{shown}/")
+    format!("{base}/{shown}")
+}
+
+/// Exact endpoint the push goes to. Kept in one place so the masked form and
+/// the real URL can never drift apart.
+fn endpoint(base: &str, token: &str) -> String {
+    format!("{base}/{token}")
 }
 
 /// One ICMP client per address family. Creating a client spawns a receiver
@@ -253,7 +259,7 @@ fn rtt_ms(rtt: Option<Duration>) -> String {
 }
 
 async fn push(settings: &Settings, status: &str, ip: Option<IpAddr>, rtt: Option<Duration>) {
-    let url = format!("{}/{}/", settings.push_url, settings.push_token);
+    let url = endpoint(&settings.push_url, &settings.push_token);
     let msg = ip.map(|i| i.to_string()).unwrap_or_else(|| "OK".to_string());
     let ping = rtt_ms(rtt);
 
@@ -274,9 +280,21 @@ async fn push(settings: &Settings, status: &str, ip: Option<IpAddr>, rtt: Option
             .call();
 
         match result {
-            Ok(_) => {
-                debug!("push delivered (status={status})");
+            Ok(resp) => {
+                debug!("push delivered (HTTP {}, status={status})", resp.status());
                 return;
+            }
+            // A non-2xx answer still carries the reason in the body, and that
+            // body is the only way to tell a wrong token from a paused monitor.
+            Err(ureq::Error::Status(code, resp)) => {
+                let body = resp.into_string().unwrap_or_default();
+                let body = body.trim();
+                if attempt == PUSH_ATTEMPTS {
+                    error!("push failed after {PUSH_ATTEMPTS} attempts: HTTP {code}: {body}");
+                    return;
+                }
+                warn!("push failed (attempt {attempt}/{PUSH_ATTEMPTS}): HTTP {code}: {body}");
+                tokio::time::sleep(PUSH_RETRY_DELAY).await;
             }
             Err(e) => {
                 if attempt == PUSH_ATTEMPTS {
@@ -417,12 +435,21 @@ mod tests {
     fn token_is_masked() {
         assert_eq!(
             masked_url("https://example.tld/api/push", "abcdef123456"),
-            "https://example.tld/api/push/abcdef…/"
+            "https://example.tld/api/push/abcdef…"
         );
         assert_eq!(
             masked_url("https://example.tld/api/push", "abc"),
-            "https://example.tld/api/push/…/"
+            "https://example.tld/api/push/…"
         );
+    }
+
+    #[test]
+    fn endpoint_has_no_trailing_slash() {
+        assert_eq!(
+            endpoint("https://example.tld/api/push", "abcdef"),
+            "https://example.tld/api/push/abcdef"
+        );
+        assert!(!endpoint("https://example.tld/api/push", "abcdef").ends_with('/'));
     }
 
     #[test]

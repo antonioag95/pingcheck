@@ -1,6 +1,6 @@
 [package]
 name = "pingcheck"
-version = "0.1.1"
+version = "0.1.2"
 edition = "2021"
 description = "ICMP liveness probe that pushes status to an Uptime Kuma push monitor"
 license = "MIT"
