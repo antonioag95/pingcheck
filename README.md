@@ -94,6 +94,23 @@ Supported artifacts:
 Run `file target/<target>/release/pingcheck` after building: it must report
 a statically linked executable.
 
+## Prebuilt binaries
+
+Every tag ships the three static binaries, so the target machine needs
+neither a Rust toolchain nor authentication:
+
+```sh
+curl -fL -o pingcheck \
+  https://github.com/antonioag95/pingcheck/releases/latest/download/pingcheck-linux-x86_64
+curl -fL -o SHA256SUMS \
+  https://github.com/antonioag95/pingcheck/releases/latest/download/SHA256SUMS
+sha256sum -c --ignore-missing SHA256SUMS
+chmod +x pingcheck
+```
+
+Replace `x86_64` with `aarch64` (64-bit Raspberry Pi OS) or `armv7`
+(32-bit Raspberry Pi OS).
+
 ## Install
 
 ```sh
