@@ -100,11 +100,11 @@ Every tag ships the three static binaries, so the target machine needs
 neither a Rust toolchain nor authentication:
 
 ```sh
-curl -fL -o pingcheck \
-  https://github.com/antonioag95/pingcheck/releases/latest/download/pingcheck-linux-x86_64
-curl -fL -o SHA256SUMS \
-  https://github.com/antonioag95/pingcheck/releases/latest/download/SHA256SUMS
+base=https://github.com/antonioag95/pingcheck/releases/latest/download
+curl -fLO "$base/pingcheck-linux-x86_64"
+curl -fLO "$base/SHA256SUMS"
 sha256sum -c --ignore-missing SHA256SUMS
+mv pingcheck-linux-x86_64 pingcheck
 chmod +x pingcheck
 ```
 
